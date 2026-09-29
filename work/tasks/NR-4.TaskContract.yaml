@@ -1,0 +1,16 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: NR-4
+  title: "The image: Packer build and the Runner AMI workflow"
+spec:
+  goal: "A prebuilt Ubuntu 24.04 runner image is built by CI over OIDC, written to /nimbus-runners/ami-id, and rebuilt weekly with the newest two kept."
+  affects:
+    - "image/**"
+    - ".github/workflows/runner-ami.yaml"
+    - "work/**"
+  doneWhen:
+    - "the Runner AMI workflow succeeds on main and /nimbus-runners/ami-id holds the new image id"
+    - "a test job on runs-on [self-hosted, linux, x64, nimbus] passes and its instance terminates within 60 seconds of the job ending"
+    - "p50 launch-to-job-start over 20 test jobs is under 60 seconds"
+  gates: []

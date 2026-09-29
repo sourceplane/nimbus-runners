@@ -6,8 +6,8 @@ As-built ≠ intent. This file records what actually shipped, and every place th
 |---|---|---|
 | NR0 — the spec | ✅ merged, synced | [#1](https://github.com/sourceplane/nimbus-runners/pull/1), [#2](https://github.com/sourceplane/nimbus-runners/pull/2) |
 | NR1 — foundations | ✅ | NR-2; [stack-granite#1](https://github.com/sourceplane/stack-granite/pull/1) + tag v0.1.0; [aws-admin#35](https://github.com/sourceplane/aws-admin/pull/35) |
-| NR2 — the fleet | in progress | NR-3 |
-| NR3 — the image | | |
+| NR2 — the fleet | applied to prod; GitHub App pending | NR-3: [#4](https://github.com/sourceplane/nimbus-runners/pull/4), [#5](https://github.com/sourceplane/nimbus-runners/pull/5), [#6](https://github.com/sourceplane/nimbus-runners/pull/6) |
+| NR3 — the image | in progress | NR-4 |
 | NR4 — orun-cloud on the fleet | | |
 | NR5 — the baseline | | |
 
