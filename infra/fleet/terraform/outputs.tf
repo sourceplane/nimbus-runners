@@ -22,5 +22,5 @@ output "public_subnet_ids" {
 }
 
 output "runner_role_name" {
-  value = module.runners.runners.role_runner.name
+  value = one(module.runners.runners.role_runner).name
 }
