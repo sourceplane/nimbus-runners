@@ -1,0 +1,18 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: NR-1
+  title: "The spec"
+spec:
+  goal: "The nimbus-runners-baseline (NR) doc set, work tree and CI that syncs it are merged on main and reconciled into Orunbase."
+  affects:
+    - "work/**"
+    - "intent.yaml"
+    - ".github/workflows/**"
+    - "README.md"
+    - ".gitignore"
+  doneWhen:
+    - "README, design, implementation plan, risks and as-built status exist under work/epics/nimbus-runners-baseline"
+    - "orun work check passes on the pull request"
+    - "the work-sync job on main creates the epic with its six milestones and NR-1 in workspace nimbus-runners"
+  gates: []

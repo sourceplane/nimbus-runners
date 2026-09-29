@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  id-token: write
+
+# Every job here runs on GitHub-hosted runners: this repository is public and
+# its workflows must never reach a self-hosted fleet (NR-G). The plan and run
+# lanes for infra/* arrive with NR1.
+jobs:
+  # THE WORK TREE, BEFORE THE MERGE: a malformed epic.yaml, a listed task with
+  # no contract or a stray contract in the NR prefix fails the pull request.
+  work-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: sourceplane/orun-action@v1.2.0
+        with:
+          version: v2.69.0
+      - run: orun work check --base "origin/${{ github.base_ref }}"
+
+  # THE WORK TREE, AFTER THE MERGE: Orunbase is reconciled from work/ under CI's
+  # OIDC identity. Idempotent by repo, path and commit; never deletes.
+  work-sync:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: sourceplane/orun-action@v1.2.0
+        with:
+          version: v2.69.0
+      - run: orun work sync --repo "${{ github.repository }}"
