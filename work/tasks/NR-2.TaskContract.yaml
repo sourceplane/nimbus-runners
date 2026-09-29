@@ -1,0 +1,18 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: NR-2
+  title: "Foundations: stack-granite pinned, plan and run lanes"
+spec:
+  goal: "This repository plans through stack-granite 0.1.0's terraform-aws composition with the aws-admin-owned OIDC role, and CI runs one lane per plan job."
+  affects:
+    - "intent.yaml"
+    - ".github/workflows/**"
+    - "work/**"
+    - "infra/.gitkeep"
+  doneWhen:
+    - "stack-granite 0.1.0 is published to ghcr.io and anonymously pullable (sourceplane/stack-granite#1, tag v0.1.0)"
+    - "the github-sourceplane-nimbus-runners role and nimbus-runners-boundary exist (sourceplane/aws-admin#35)"
+    - "orun plan --env prod resolves the OCI stack and binds terraform-aws"
+    - "CI carries plan and run jobs with remote state and GitHub-hosted runners only"
+  gates: []

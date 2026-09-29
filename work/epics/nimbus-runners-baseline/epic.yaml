@@ -16,8 +16,8 @@ spec:
     - name: "NR1 — foundations"
       exitCriteria:
         - "stack-granite 0.1.0 resolves from ghcr.io and orun plan loads its terraform-aws composition here"
-        - "a PR lane assumes the aws-admin-owned nimbus-runners plan role over GitHub OIDC"
-      tasks: []
+        - "a PR lane assumes the aws-admin-owned nimbus-runners role over GitHub OIDC"
+      tasks: [NR-2]
     - name: "NR2 — the fleet"
       exitCriteria:
         - "a workflow on runs-on [self-hosted, linux, x64, nimbus] boots a spot instance, passes, and the instance is terminated"

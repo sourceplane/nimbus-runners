@@ -4,8 +4,8 @@ As-built ≠ intent. This file records what actually shipped, and every place th
 
 | Milestone | State | PR |
 |---|---|---|
-| NR0 — the spec | in review | |
-| NR1 — foundations | | |
+| NR0 — the spec | ✅ merged, synced | [#1](https://github.com/sourceplane/nimbus-runners/pull/1), [#2](https://github.com/sourceplane/nimbus-runners/pull/2) |
+| NR1 — foundations | in progress | NR-2; [stack-granite#1](https://github.com/sourceplane/stack-granite/pull/1) + tag v0.1.0; [aws-admin#35](https://github.com/sourceplane/aws-admin/pull/35) |
 | NR2 — the fleet | | |
 | NR3 — the image | | |
 | NR4 — orun-cloud on the fleet | | |
@@ -22,4 +22,11 @@ As-built ≠ intent. This file records what actually shipped, and every place th
 
 ## Departures from the design
 
-None yet.
+### One role, not a plan/deploy pair (NR1)
+
+The design named a plan role for pull requests and main, and a deploy role for `prod`. stack-granite's `terraform-aws` takes one `awsRoleArn` per environment, and orun has no per-trigger parameter override. So the PR plan lane and the main apply lane assume one role, `github-sourceplane-nimbus-runners`, trusted for `pull_request` and `ref:refs/heads/main`.
+
+What limits it:
+- Fork pull requests never receive an OIDC token.
+- Every role the fleet creates must carry `nimbus-runners-boundary`, which the role cannot loosen.
+- IAM, Lambda, SQS, SSM, S3, logs, events and budgets are scoped to `nimbus-runners*`.
