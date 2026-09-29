@@ -1,0 +1,5 @@
+.orun/
+.terraform/
+.terraform.lock.hcl
+*.tfstate*
+manifest.json
