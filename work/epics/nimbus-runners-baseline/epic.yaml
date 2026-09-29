@@ -7,7 +7,7 @@ spec:
   title: "nimbus-runners: spot GitHub runners as an Orun baseline (NR)"
   summary: "Any Orunbase workspace can stand up ephemeral, spot-priced, self-hosted GitHub Actions runners in its own AWS account with its own GitHub App, from one baseline. The fleet from aws-admin#33 moves here, deploys through stack-granite with OIDC-assumed AWS roles and Orun-held state, and serves sourceplane/orun-cloud under a $55/month target at its 30-day volume. Done when orun-cloud's run lanes execute on the fleet and baseline-v1 is registered."
   state: started
-  owner: me
+  owner: usr_d5c8bdc650384714a4c1fddccf388e5e
   milestones:
     - name: "NR0 — the spec"
       exitCriteria:
