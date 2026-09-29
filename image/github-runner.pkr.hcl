@@ -101,7 +101,7 @@ build {
       "DEBIAN_FRONTEND=noninteractive",
       "NODE_VERSIONS=${join(" ", var.node_versions)}",
     ]
-    execute_command = "sudo -E bash '{{ .Path }}'"
+    execute_command = "sudo -E env {{ .Vars }} bash '{{ .Path }}'"
     script          = "${path.root}/provision.sh"
   }
 
