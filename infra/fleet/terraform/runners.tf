@@ -97,8 +97,10 @@ module "runners" {
   runner_architecture           = "x64"
   enable_userdata               = false
   enable_runner_binaries_syncer = false
+  # Built from known values: the module counts resources on this ARN, so it
+  # must be known at plan time (the parameter's own .arn is not, on first apply).
   ami = {
-    id_ssm_parameter_arn = aws_ssm_parameter.runner_ami_id.arn
+    id_ssm_parameter_arn = "arn:aws:ssm:${local.aws_region}:${local.account_id}:parameter${aws_ssm_parameter.runner_ami_id.name}"
   }
   # Consumers (orun-cloud) hard-code /home/runner (DOCKER_CONFIG, the shared caches).
   runner_run_as = "runner"
