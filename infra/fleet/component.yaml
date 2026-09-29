@@ -1,0 +1,27 @@
+apiVersion: sourceplane.io/v1
+kind: Component
+
+metadata:
+  name: fleet
+  description: The nimbus-runners spot fleet — network, lambdas, runners and budget in one Terraform root
+  labels:
+    domain: infra
+    account-scope: shared
+
+spec:
+  type: terraform-aws
+  domain: infra
+
+  parameters:
+    stackName: nimbus-runners-fleet
+    terraformDir: terraform
+    terraformVersion: "1.15.3"
+
+  subscribe:
+    environments:
+      - name: prod
+        profile: plan-only
+        profileRules:
+          - profile: apply
+            when:
+              triggerRef: github-push-main

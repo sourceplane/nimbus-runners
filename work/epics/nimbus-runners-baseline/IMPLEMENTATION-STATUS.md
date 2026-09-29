@@ -5,8 +5,8 @@ As-built ≠ intent. This file records what actually shipped, and every place th
 | Milestone | State | PR |
 |---|---|---|
 | NR0 — the spec | ✅ merged, synced | [#1](https://github.com/sourceplane/nimbus-runners/pull/1), [#2](https://github.com/sourceplane/nimbus-runners/pull/2) |
-| NR1 — foundations | in progress | NR-2; [stack-granite#1](https://github.com/sourceplane/stack-granite/pull/1) + tag v0.1.0; [aws-admin#35](https://github.com/sourceplane/aws-admin/pull/35) |
-| NR2 — the fleet | | |
+| NR1 — foundations | ✅ | NR-2; [stack-granite#1](https://github.com/sourceplane/stack-granite/pull/1) + tag v0.1.0; [aws-admin#35](https://github.com/sourceplane/aws-admin/pull/35) |
+| NR2 — the fleet | in progress | NR-3 |
 | NR3 — the image | | |
 | NR4 — orun-cloud on the fleet | | |
 | NR5 — the baseline | | |
@@ -30,3 +30,7 @@ What limits it:
 - Fork pull requests never receive an OIDC token.
 - Every role the fleet creates must carry `nimbus-runners-boundary`, which the role cannot loosen.
 - IAM, Lambda, SQS, SSM, S3, logs, events and budgets are scoped to `nimbus-runners*`.
+
+### One Terraform root, not three components (NR2)
+
+The design split the fleet into `infra/network`, `infra/runners` and `infra/budget`, wired through `secretOutputs` → `secretEnv`. That wiring makes a pull request's plan of `runners` depend on a secret that only a previous apply of `network` publishes. The first PR could never plan clean. The fleet ships as one root, `infra/fleet`, with the same files (`network.tf`, `lambdas.tf`, `runners.tf`, `budget.tf`). Splitting it later is a state move, not a redesign.

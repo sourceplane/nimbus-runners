@@ -22,7 +22,7 @@ spec:
       exitCriteria:
         - "a workflow on runs-on [self-hosted, linux, x64, nimbus] boots a spot instance, passes, and the instance is terminated"
         - "a 100-job burst drains with no job waiting more than 3 minutes for a runner"
-      tasks: []
+      tasks: [NR-3]
     - name: "NR3 — the image"
       exitCriteria:
         - "the Runner AMI workflow writes the image id to SSM and p50 launch-to-job-start is under 60 seconds"

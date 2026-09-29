@@ -1,0 +1,17 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: NR-3
+  title: "The fleet: infra/fleet on terraform-aws"
+spec:
+  goal: "The spot fleet (network, pinned lambdas, runners module, budget) is one terraform-aws component that plans on pull requests and applies to prod on main."
+  affects:
+    - "infra/**"
+    - "BOOTSTRAP.md"
+    - "work/**"
+  doneWhen:
+    - "infra/fleet plans clean on the pull request under the aws-admin-owned role"
+    - "the merge applies it to prod and the webhook_endpoint output exists"
+    - "every IAM role the module created carries nimbus-runners-boundary"
+    - "BOOTSTRAP.md covers the GitHub App, its SSM parameters, the webhook URL and the spot quota"
+  gates: []
