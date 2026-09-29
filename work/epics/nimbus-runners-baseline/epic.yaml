@@ -1,0 +1,38 @@
+apiVersion: orun.io/v1
+kind: Epic
+metadata:
+  name: nimbus-runners-baseline
+  key: NR
+spec:
+  title: "nimbus-runners: spot GitHub runners as an Orun baseline (NR)"
+  summary: "Any Orunbase workspace can stand up ephemeral, spot-priced, self-hosted GitHub Actions runners in its own AWS account with its own GitHub App, from one baseline. The fleet from aws-admin#33 moves here, deploys through stack-granite with OIDC-assumed AWS roles and Orun-held state, and serves sourceplane/orun-cloud under a $55/month target at its 30-day volume. Done when orun-cloud's run lanes execute on the fleet and baseline-v1 is registered."
+  state: started
+  owner: me
+  milestones:
+    - name: "NR0 — the spec"
+      exitCriteria:
+        - "the doc set is on main and synced to the epic by orun work sync"
+      tasks: [NR-1]
+    - name: "NR1 — foundations"
+      exitCriteria:
+        - "stack-granite 0.1.0 resolves from ghcr.io and orun plan loads its terraform-aws composition here"
+        - "a PR lane assumes the aws-admin-owned nimbus-runners plan role over GitHub OIDC"
+      tasks: []
+    - name: "NR2 — the fleet"
+      exitCriteria:
+        - "a workflow on runs-on [self-hosted, linux, x64, nimbus] boots a spot instance, passes, and the instance is terminated"
+        - "a 100-job burst drains with no job waiting more than 3 minutes for a runner"
+      tasks: []
+    - name: "NR3 — the image"
+      exitCriteria:
+        - "the Runner AMI workflow writes the image id to SSM and p50 launch-to-job-start is under 60 seconds"
+      tasks: []
+    - name: "NR4 — orun-cloud on the fleet"
+      exitCriteria:
+        - "orun-cloud's run matrix executes on the fleet for 7 days with no fleet-caused failure"
+        - "the measured monthly run-rate is recorded against the cost model"
+      tasks: []
+    - name: "NR5 — the baseline"
+      exitCriteria:
+        - "baseline-v1 is tagged, registered with orun baseline register, and orun baseline new nimbus-runners builds a fresh fleet in a test account"
+      tasks: []

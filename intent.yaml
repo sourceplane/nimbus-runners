@@ -1,0 +1,65 @@
+apiVersion: sourceplane.io/v1
+kind: Intent
+
+metadata:
+  name: nimbus-runners
+  description: Ephemeral AWS spot GitHub Actions runners with their own GitHub App, as an Orun baseline
+  namespace: sourceplane
+
+execution:
+  state:
+    # CI reports to Orunbase over GitHub OIDC. The exchange mints a token only
+    # because this repo is linked to the declared workspace with CI/OIDC on.
+    backendUrl: https://api.orunbase.com
+    workspace: ws_9568AAET
+    requireOrg: true
+
+# Work as code: the epic, its milestones and task contracts live in git and
+# `orun work sync` reconciles them into Orunbase on every push to main.
+work:
+  epics: work/epics
+  tasks: work/tasks
+  sync: on-merge
+
+# Compositions arrive with NR1 (stack-granite terraform-aws, pinned by OCI
+# digest). Until then the repo carries only its work tree.
+discovery:
+  roots:
+    - infra/
+
+automation:
+  triggerBindings:
+    github-pull-request:
+      description: Pull request validation
+      on:
+        provider: github
+        event: pull_request
+        actions: [opened, synchronize, reopened, ready_for_review]
+        baseBranches: [main]
+      plan:
+        scope: changed
+        base: pull_request.base.sha
+        head: pull_request.head.sha
+
+    github-push-main:
+      description: Converge the fleet after merge
+      on:
+        provider: github
+        event: push
+        branches: [main]
+
+environments:
+  prod:
+    activation:
+      triggerRefs:
+        - github-pull-request
+        - github-push-main
+    parameterDefaults:
+      terraform-aws:
+        awsRegion: us-east-1
+        namespace: sourceplane
+        namespacePrefix: nimbus-
+        owner: sourceplane
+        repo: nimbus-runners
+    env:
+      AWS_REGION: us-east-1
