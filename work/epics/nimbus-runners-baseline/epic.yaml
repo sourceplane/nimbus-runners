@@ -26,7 +26,7 @@ spec:
     - name: "NR3 — the image"
       exitCriteria:
         - "the Runner AMI workflow writes the image id to SSM and p50 launch-to-job-start is under 60 seconds"
-      tasks: []
+      tasks: [NR-4]
     - name: "NR4 — orun-cloud on the fleet"
       exitCriteria:
         - "orun-cloud's run matrix executes on the fleet for 7 days with no fleet-caused failure"

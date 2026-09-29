@@ -1,0 +1,102 @@
+name: Runner AMI
+
+# Builds the fleet image (image/) and points the fleet at it by writing the id
+# to /nimbus-runners/ami-id, which the launch template resolves at every
+# launch, so a new image needs no Terraform apply. Weekly so the image carries
+# the current actions/runner (an outdated runner self-updates at boot, which
+# costs boot time on every job) and current OS patches.
+#
+# Runs on GitHub-hosted runners (NR-G) and assumes the aws-admin-owned role
+# over OIDC: no static AWS keys.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - image/**
+      - .github/workflows/runner-ami.yaml
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: runner-ami
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: arn:aws:iam::306024784101:role/github-sourceplane-nimbus-runners
+  MODULE_TAG: v7.11.0 # keep in step with runner_module_version in infra/fleet/terraform/local.tf
+  AMI_PARAMETER: /nimbus-runners/ami-id
+  KEEP_IMAGES: "2"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: github-aws-runners/terraform-aws-github-runner
+          ref: ${{ env.MODULE_TAG }}
+          path: .runner-module
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-session-name: nimbus-runner-ami
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-packer@v3
+
+      - id: versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          runner=$(gh api repos/actions/runner/releases/latest --jq '.tag_name' | sed 's/^v//')
+          node=$(curl -fsSL https://nodejs.org/dist/index.json \
+            | jq -c '[ (20, 22) as $m | ([.[] | select(.version | startswith("v\($m)."))][0].version | ltrimstr("v")) ]')
+          echo "runner=$runner" >> "$GITHUB_OUTPUT"
+          echo "node=$node" >> "$GITHUB_OUTPUT"
+          echo "actions/runner $runner, node $node"
+
+      - name: Build
+        working-directory: image
+        run: |
+          set -euo pipefail
+          packer init .
+          packer build -color=false \
+            -var "region=$AWS_REGION" \
+            -var "module_dir=$GITHUB_WORKSPACE/.runner-module" \
+            -var "runner_version=${{ steps.versions.outputs.runner }}" \
+            -var 'node_versions=${{ steps.versions.outputs.node }}' \
+            .
+          ami=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d: -f2)
+          echo "AMI=$ami" >> "$GITHUB_ENV"
+
+      - name: Point the fleet at the new image
+        run: |
+          set -euo pipefail
+          aws ssm put-parameter --name "$AMI_PARAMETER" --type String \
+            --data-type aws:ec2:image --value "$AMI" --overwrite
+          echo "::notice::$AMI_PARAMETER = $AMI"
+
+      - name: Deregister superseded images
+        run: |
+          set -euo pipefail
+          aws ec2 describe-images --owners self --filters "Name=tag:Fleet,Values=nimbus-runners" \
+            --query 'sort_by(Images,&CreationDate)[].[ImageId, join(`,`, BlockDeviceMappings[].Ebs.SnapshotId)]' --output text \
+            | head -n "-$KEEP_IMAGES" \
+            | while read -r image snapshots; do
+                [ "$image" = "$AMI" ] && continue
+                echo "deregistering $image ($snapshots)"
+                aws ec2 deregister-image --image-id "$image"
+                for s in ${snapshots//,/ }; do aws ec2 delete-snapshot --snapshot-id "$s"; done
+              done
