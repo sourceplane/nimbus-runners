@@ -74,8 +74,11 @@ module "runners" {
   }
 
   # Burst: ~120 lanes land within seconds on a full verify.
-  runners_maximum_count                                          = local.runners_maximum_count
-  scale_up_reserved_concurrent_executions                        = 5
+  runners_maximum_count = local.runners_maximum_count
+  # No reservation: a fresh account's Lambda concurrency limit is 10, and AWS
+  # refuses a reservation that leaves fewer than 10 unreserved. Batches of 20
+  # keep a 100-job burst to a handful of concurrent scale-up invocations.
+  scale_up_reserved_concurrent_executions                        = -1
   lambda_event_source_mapping_batch_size                         = 20
   lambda_event_source_mapping_maximum_batching_window_in_seconds = 1
   minimum_running_time_in_minutes                                = 3

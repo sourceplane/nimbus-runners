@@ -41,9 +41,10 @@ These values never pass through Terraform state, CI or Orun. The module's lambda
 
 After the first apply on `main`, the `fleet · prod · Terraform` lane prints the `webhook_endpoint` output. Set it as the App's webhook URL. **Advanced → Recent deliveries** should show `202` for the next queued job.
 
-## 5. The spot quota
+## 5. The quotas
 
-A 100-runner burst needs 200 vCPUs of **All Standard (A, C, D, H, I, M, R, T, Z) Spot Instance Requests** (`L-34B43A08`, Service Quotas → Amazon EC2). Request more if it is lower.
+- **Spot vCPUs.** A 100-runner burst needs 200 vCPUs of **All Standard (A, C, D, H, I, M, R, T, Z) Spot Instance Requests** (`L-34B43A08`, Service Quotas → Amazon EC2). Request more if it is lower.
+- **Lambda concurrency.** A fresh account allows 10 concurrent executions (`L-B99A9384`, Service Quotas → AWS Lambda). The fleet reserves none and works at 10, but it shares that pool with every other function in the account. Request 1,000 (the standard default).
 
 ## 6. The image
 
