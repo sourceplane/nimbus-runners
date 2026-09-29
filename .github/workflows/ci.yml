@@ -14,8 +14,7 @@ permissions:
   id-token: write
 
 # Every job here runs on GitHub-hosted runners: this repository is public and
-# its workflows must never reach a self-hosted fleet (NR-G). The plan and run
-# lanes for infra/* arrive with NR1.
+# its workflows must never reach a self-hosted fleet (NR-G).
 jobs:
   # THE WORK TREE, BEFORE THE MERGE: a malformed epic.yaml, a listed task with
   # no contract or a stray contract in the NR prefix fails the pull request.
@@ -31,6 +30,71 @@ jobs:
         with:
           version: v2.69.0
       - run: orun work check --base "origin/${{ github.base_ref }}"
+
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      job-matrix: ${{ steps.matrix.outputs.job-matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: sourceplane/orun-action@v1.2.0
+        with:
+          version: v2.69.0
+      - run: |
+          set -euo pipefail
+          orun plan \
+            --from-ci github \
+            --event-file "$GITHUB_EVENT_PATH" \
+            --intent intent.yaml \
+            --output plan.json \
+            --changed
+      - id: matrix
+        run: |
+          echo "job-matrix=$(jq -c '[.jobs[] | {"job-id": .id, "job-name": .checkName}]' plan.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orun-plan
+          path: plan.json
+
+  # One lane per plan job. Remote state is on for pull requests too: the
+  # terraform-aws composition keeps Terraform state on the platform (the runner
+  # exports TF_HTTP_* only under --remote-state), and the plan-only profile
+  # never applies. AWS credentials come from the aws-admin-owned role over OIDC.
+  run:
+    needs: plan
+    if: ${{ needs.plan.outputs.job-matrix != '[]' && needs.plan.outputs.job-matrix != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.plan.outputs.job-matrix) }}
+    name: ${{ matrix.job-name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: orun-plan
+      - uses: sourceplane/orun-action@v1.2.0
+        with:
+          version: v2.69.0
+      - run: |
+          set -euo pipefail
+          retry_flag=""
+          if [ "${GITHUB_RUN_ATTEMPT:-1}" -gt 1 ]; then retry_flag="--retry"; fi
+          orun run \
+            --plan plan.json \
+            --runner github-actions \
+            --remote-state \
+            --job "${{ matrix.job-id }}" \
+            --exec-id "${{ github.run_id }}" \
+            $retry_flag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # THE WORK TREE, AFTER THE MERGE: Orunbase is reconciled from work/ under CI's
   # OIDC identity. Idempotent by repo, path and commit; never deletes.

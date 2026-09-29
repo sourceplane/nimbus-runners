@@ -21,8 +21,21 @@ work:
   tasks: work/tasks
   sync: on-merge
 
-# Compositions arrive with NR1 (stack-granite terraform-aws, pinned by OCI
-# digest). Until then the repo carries only its work tree.
+# The compositions are stack-granite's, consumed as a published OCI artifact
+# and pinned by version: a bare reference resolves to :latest, which would let
+# a catalog release change this repo's execution contracts without a commit
+# here. terraform-aws brings OIDC-assumed AWS credentials and Orun-held state.
+compositions:
+  sources:
+    - name: stack-granite
+      kind: oci
+      ref: oci://ghcr.io/sourceplane/stack-granite:0.1.0
+  resolution:
+    precedence:
+      - stack-granite
+    bindings:
+      terraform-aws: stack-granite
+
 discovery:
   roots:
     - infra/
@@ -61,5 +74,7 @@ environments:
         namespacePrefix: nimbus-
         owner: sourceplane
         repo: nimbus-runners
+        # Owned by sourceplane/aws-admin (github-repo-sourceplane-nimbus-runners).
+        awsRoleArn: arn:aws:iam::306024784101:role/github-sourceplane-nimbus-runners
     env:
       AWS_REGION: us-east-1
