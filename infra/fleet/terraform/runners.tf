@@ -12,7 +12,7 @@ resource "aws_ssm_parameter" "runner_ami_id" {
   name        = local.ami_ssm_parameter_name
   description = "Prebuilt GitHub runner AMI id, written by the runner-ami workflow"
   type        = "String"
-  data_type   = "text"
+  data_type   = "aws:ec2:image" # the launch template's resolve:ssm requires it
   value       = data.aws_ssm_parameter.ubuntu_noble.insecure_value
 
   lifecycle {
