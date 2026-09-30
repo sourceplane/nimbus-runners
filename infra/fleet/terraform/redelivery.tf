@@ -13,6 +13,18 @@ data "archive_file" "redelivery" {
   output_path = "${path.module}/.build/redelivery.zip"
 }
 
+# Per-job redelivery counts (the function owns the value).
+resource "aws_ssm_parameter" "redelivery_state" {
+  name        = "/${local.ssm_root}/redelivery/state"
+  description = "Webhook redelivery sweeper state: last redelivery per job id"
+  type        = "String"
+  value       = "{}"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 resource "aws_cloudwatch_log_group" "redelivery" {
   name              = "/aws/lambda/${local.redelivery_name}"
   retention_in_days = 7
@@ -40,6 +52,11 @@ data "aws_iam_policy_document" "redelivery" {
     sid       = "AppCredentials"
     actions   = ["ssm:GetParameter"]
     resources = [local.ssm_arn_for["id"], local.ssm_arn_for["key_base64"]]
+  }
+  statement {
+    sid       = "State"
+    actions   = ["ssm:GetParameter", "ssm:PutParameter"]
+    resources = [aws_ssm_parameter.redelivery_state.arn]
   }
   statement {
     sid       = "DecryptSecureString"
@@ -80,8 +97,10 @@ resource "aws_lambda_function" "redelivery" {
       APP_ID_PARAM         = "${local.github_app_ssm_prefix}/id"
       APP_KEY_PARAM        = "${local.github_app_ssm_prefix}/key_base64"
       ALLOWED_REPOSITORIES = join(",", local.allowed_repositories)
+      STATE_PARAM          = aws_ssm_parameter.redelivery_state.name
       WINDOW_MINUTES       = "60"
-      MAX_ATTEMPTS         = "5"
+      MAX_ATTEMPTS         = "3"
+      BACKOFF_MINUTES      = "4"
       SPACING_MS           = "300"
     }
   }
