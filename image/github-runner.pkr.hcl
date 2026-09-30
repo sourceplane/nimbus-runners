@@ -143,6 +143,7 @@ build {
       "sudo rm -rf /var/lib/cloud/instance /var/lib/cloud/instances/* /var/lib/cloud/data/* /var/log/cloud-init*.log",
       "sudo truncate -s 0 /etc/machine-id",
       "test -x /var/lib/cloud/scripts/per-boot/start-runner.sh",
+      "test \"$(readlink -f /opt/actions-runner/_work)\" = /home/runner/work",
       "sudo rm -rf /tmp/* /var/lib/apt/lists/*",
     ]
   }

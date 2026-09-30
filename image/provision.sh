@@ -43,6 +43,15 @@ usermod -aG docker runner
 echo "runner ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/runner
 chmod 0440 /etc/sudoers.d/runner
 install -d -o runner -g runner /home/runner/.docker /home/runner/.orun/actions/shared
+# The hosted runner's work layout: jobs run in /home/runner/work/<repo>/<repo>.
+# actions/cache stores paths outside the workspace RELATIVE to it, so a cache
+# saved on a GitHub-hosted runner holds ../../../.local/bin/orun and restores
+# into the wrong place under /opt/actions-runner/_work. The runner's _work is a
+# symlink to /home/runner/work: `..` resolves physically, and every cache
+# shared with hosted runners lands where the job expects it.
+install -d /home/runner/work /opt/actions-runner
+ln -sfn /home/runner/work /opt/actions-runner/_work
+
 # install -d owns only the leaf: hand the whole home to runner, or a lane's
 # `mkdir ~/.orun/tool-cache` is refused (orun-cloud CI).
 chown -R runner:runner /home/runner
