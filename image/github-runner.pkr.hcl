@@ -133,8 +133,17 @@ build {
     destination = "/tmp/start-runner.sh"
   }
 
+  provisioner "file" {
+    source      = "${path.root}/jit-work-folder.py"
+    destination = "/tmp/jit-work-folder"
+  }
+
   provisioner "shell" {
     inline = [
+      "sudo install -m 0755 /tmp/jit-work-folder /usr/local/bin/jit-work-folder",
+      # Run each job in /home/runner/work, the hosted layout (jit-work-folder.py).
+      "sudo sed -i 's|--jitconfig $${config}|--jitconfig \"$(/usr/local/bin/jit-work-folder \"$${config}\")\"|' /tmp/start-runner.sh",
+      "grep -q 'jit-work-folder' /tmp/start-runner.sh",
       "sudo mv /tmp/start-runner.sh /var/lib/cloud/scripts/per-boot/start-runner.sh",
       "sudo chmod +x /var/lib/cloud/scripts/per-boot/start-runner.sh",
       # Leave no instance identity behind, but keep /var/lib/cloud/scripts:
@@ -143,7 +152,6 @@ build {
       "sudo rm -rf /var/lib/cloud/instance /var/lib/cloud/instances/* /var/lib/cloud/data/* /var/log/cloud-init*.log",
       "sudo truncate -s 0 /etc/machine-id",
       "test -x /var/lib/cloud/scripts/per-boot/start-runner.sh",
-      "test \"$(sudo readlink -f /opt/actions-runner/_work)\" = /home/runner/work",
       "sudo rm -rf /tmp/* /var/lib/apt/lists/*",
     ]
   }
