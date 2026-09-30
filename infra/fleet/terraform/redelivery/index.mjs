@@ -16,7 +16,7 @@ import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
 
 const ssm = new SSMClient({});
 const API = "https://api.github.com";
-const WINDOW_MS = Number(process.env.WINDOW_MINUTES ?? 20) * 60_000;
+const WINDOW_MS = Number(process.env.WINDOW_MINUTES ?? 60) * 60_000;
 const MAX_ATTEMPTS = Number(process.env.MAX_ATTEMPTS ?? 5);
 const SPACING_MS = Number(process.env.SPACING_MS ?? 300);
 const SETTLE_MS = 20_000; // leave a delivery that is seconds old to its first attempt
@@ -50,6 +50,12 @@ function appJwt({ appId, key }) {
   return `${unsigned}.${signature}`;
 }
 
+// Delivery ids exceed Number.MAX_SAFE_INTEGER: JSON.parse would round them and
+// every follow-up call would 404. Read every "id" as a string.
+async function json(res) {
+  return JSON.parse((await res.text()).replace(/"id":\s*(\d{16,})/g, '"id":"$1"'));
+}
+
 async function gh(jwt, path, init = {}) {
   const res = await fetch(path.startsWith("http") ? path : `${API}${path}`, {
     ...init,
@@ -76,7 +82,7 @@ async function recentDeliveries(jwt) {
   let url = "/app/hook/deliveries?per_page=100";
   for (let page = 0; url && page < 10; page++) {
     const res = await gh(jwt, url);
-    const batch = await res.json();
+    const batch = await json(res);
     all.push(...batch);
     if (!batch.length || Date.parse(batch[batch.length - 1].delivered_at) < cutoff) break;
     url = /<([^>]+)>;\s*rel="next"/.exec(res.headers.get("link") ?? "")?.[1];
@@ -96,6 +102,7 @@ export async function handler() {
 
   let redelivered = 0;
   let skipped = 0;
+  let failed = 0;
   for (const attempts of byGuid.values()) {
     if (attempts.some(ok)) continue;
     const latest = attempts.reduce((a, b) => (Date.parse(a.delivered_at) > Date.parse(b.delivered_at) ? a : b));
@@ -103,19 +110,24 @@ export async function handler() {
       skipped++;
       continue;
     }
-    const detail = await (await gh(jwt, `/app/hook/deliveries/${latest.id}`)).json();
-    const repo = detail.request?.payload?.repository?.full_name?.toLowerCase();
-    if (!repo || !ALLOWED.has(repo)) {
-      skipped++;
-      continue;
+    try {
+      const detail = await json(await gh(jwt, `/app/hook/deliveries/${latest.id}`));
+      const repo = detail.request?.payload?.repository?.full_name?.toLowerCase();
+      if (!repo || !ALLOWED.has(repo)) {
+        skipped++;
+        continue;
+      }
+      await gh(jwt, `/app/hook/deliveries/${latest.id}/attempts`, { method: "POST" });
+      redelivered++;
+      console.log(JSON.stringify({ msg: "redelivered", guid: latest.guid, repo, status: latest.status_code, attempt: attempts.length + 1 }));
+    } catch (err) {
+      failed++;
+      console.log(JSON.stringify({ msg: "redelivery failed", guid: latest.guid, error: String(err).slice(0, 300) }));
     }
-    await gh(jwt, `/app/hook/deliveries/${latest.id}/attempts`, { method: "POST" });
-    redelivered++;
-    console.log(JSON.stringify({ msg: "redelivered", guid: latest.guid, repo, status: latest.status_code, attempt: attempts.length + 1 }));
     await sleep(SPACING_MS);
   }
 
-  const summary = { scanned: deliveries.length, queuedGuids: byGuid.size, redelivered, skipped };
+  const summary = { scanned: deliveries.length, queuedGuids: byGuid.size, redelivered, skipped, failed };
   console.log(JSON.stringify({ msg: "summary", ...summary }));
   return summary;
 }
