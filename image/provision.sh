@@ -43,6 +43,9 @@ usermod -aG docker runner
 echo "runner ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/runner
 chmod 0440 /etc/sudoers.d/runner
 install -d -o runner -g runner /home/runner/.docker /home/runner/.orun/actions/shared
+# install -d owns only the leaf: hand the whole home to runner, or a lane's
+# `mkdir ~/.orun/tool-cache` is refused (orun-cloud CI).
+chown -R runner:runner /home/runner
 
 # Node in the hosted tool cache: setup-node resolves these without a download,
 # and orun-cloud links $RUNNER_TOOL_CACHE/node into each lane's tool cache.
