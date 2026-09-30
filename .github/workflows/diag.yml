@@ -15,6 +15,12 @@ jobs:
       - run: |
           set -u
           since=$(( ($(date +%s) - 1200) * 1000 ))
+          echo "===== webhook queued deliveries accepted for orun-managed-runners since 06:22Z"
+          aws logs filter-log-events --log-group-name /aws/lambda/nimbus-runners-webhook --start-time $(date -d '2026-09-30T06:22:00Z' +%s)000 --end-time $(date -d '2026-09-30T06:40:00Z' +%s)000 \
+            --filter-pattern '"Github event queued accepted for sourceplane/orun-managed-runners"' --query 'length(events)'
+          echo "===== webhook invocations in window (START lines)"
+          aws logs filter-log-events --log-group-name /aws/lambda/nimbus-runners-webhook --start-time $(date -d '2026-09-30T06:22:00Z' +%s)000 --end-time $(date -d '2026-09-30T06:40:00Z' +%s)000 \
+            --filter-pattern '"START RequestId"' --query 'length(events)'
           for fn in scale-up; do
             echo "===== /aws/lambda/nimbus-runners-$fn"
             aws logs filter-log-events --log-group-name "/aws/lambda/nimbus-runners-$fn" --start-time $since \
