@@ -80,7 +80,7 @@ resource "aws_lambda_function" "redelivery" {
       APP_ID_PARAM         = "${local.github_app_ssm_prefix}/id"
       APP_KEY_PARAM        = "${local.github_app_ssm_prefix}/key_base64"
       ALLOWED_REPOSITORIES = join(",", local.allowed_repositories)
-      WINDOW_MINUTES       = "20"
+      WINDOW_MINUTES       = "60"
       MAX_ATTEMPTS         = "5"
       SPACING_MS           = "300"
     }
