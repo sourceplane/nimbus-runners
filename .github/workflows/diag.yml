@@ -1,0 +1,22 @@
+name: diag
+on: pull_request
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  diag:
+    if: startsWith(github.head_ref, 'diag/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::306024784101:role/github-sourceplane-nimbus-runners
+          aws-region: us-east-1
+      - run: |
+          since=$(( ($(date +%s) - 1200) * 1000 ))
+          echo "===== sweeper"
+          aws logs filter-log-events --log-group-name /aws/lambda/nimbus-runners-webhook-redelivery --start-time $since --query 'events[].message' --output text | tr '\t' '\n' | grep -vE '^\s*$|^(START|END|REPORT|INIT)' | cut -c1-300 | tail -25
+          echo "===== scale-up errors/creates"
+          aws logs filter-log-events --log-group-name /aws/lambda/nimbus-runners-scale-up --start-time $since --query 'events[].message' --output text | tr '\t' '\n' | grep -iE 'error|warn|Created instance|exceed|limit|Runner creation summary' | sed -E 's/"(timestamp|service|sampling_rate|xray_trace_id|region|environment|aws-request-id|function-name)":"?[^,]*,//g' | cut -c1-260 | tail -25
+          echo "===== running instances"
+          aws ec2 describe-instances --filters Name=tag:ghr:environment,Values=nimbus-runners Name=instance-state-name,Values=pending,running --query 'length(Reservations[].Instances[])'
