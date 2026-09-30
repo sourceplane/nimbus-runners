@@ -14,11 +14,11 @@ jobs:
           aws-region: us-east-1
       - run: |
           set -u
-          since=$(( ($(date +%s) - 3600) * 1000 ))
+          since=$(( ($(date +%s) - 1200) * 1000 ))
           for fn in scale-up; do
             echo "===== /aws/lambda/nimbus-runners-$fn"
             aws logs filter-log-events --log-group-name "/aws/lambda/nimbus-runners-$fn" --start-time $since \
-              --query 'events[].message' --output text 2>&1 | tr '\t' '\n' | grep -vE '^\s*$' | cut -c1-300 | grep -iE 'error|warn|fail' | tail -15
+              --query 'events[].message' --output text 2>&1 | tr '\t' '\n' | grep -vE '^\s*$' | grep -iE 'error|warn|fail|Created instance|exceed|limit|capacity' | sed -E 's/"(timestamp|service|sampling_rate|xray_trace_id|region|environment|aws-request-id|function-name)":"?[^,]*,//g' | cut -c1-400 | tail -30
           done
           echo "===== queues"
           for q in $(aws sqs list-queues --queue-name-prefix nimbus-runners --query 'QueueUrls[]' --output text); do
