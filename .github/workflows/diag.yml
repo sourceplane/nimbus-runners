@@ -1,0 +1,20 @@
+name: diag
+on: pull_request
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  diag:
+    if: startsWith(github.head_ref, 'diag/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::306024784101:role/github-sourceplane-nimbus-runners
+          aws-region: us-east-1
+      - run: |
+          aws ec2 describe-instances --instance-ids i-00db617c57cad812f i-02adff4dd484010a7 i-033e61ed5b12ce783 i-06e25d828e2d2f3bf i-0a6340712ea535542 i-0b9678193cf63f6f6 i-015a1339ed1cb1d10 i-00cf4929f2625662d i-069dd3a758f6d876c i-0636353cc7b96abad i-06247694e981a0ccc i-0381dcf706fd3c5cb i-06d29f53b0e2826e2 i-0a837cefde0b7defe i-0e90aefbdef08e9eb i-0003e142fc3ef57f0 i-08f18012725199b7b i-028a8af55fcdd00e7 i-06e858101f71989ef i-0b04833f0b679caec i-05cf77960bcd7be2d i-0cc467f605f83e765 i-062a83824a15ba4bf i-0e5734138afa5eafb i-00a0989f2b9dea71d i-0c2144da687cc7b9d i-0b05a79977af5853a i-0434e4ff7fe4d4d34 i-03d7390aced9bf0ef i-0255f1b9367483da9 i-02b0ca2aebebbaaa5 i-08105e5ec1ebad794 i-0f36e27b5da9652d2 i-00b8332846d0a0cd1 i-0e2363966f4b8c817 i-02d44ab817c2d4fb2 i-0239aaf991b7dd16e i-0759990652213e829 i-0b3c66bf295e1d603 i-034ad98bd02cdc7a4 i-0ab570bf6ac13a956 i-011c87a1c61c6d405 i-0dc2e2cbd36e10e95 i-08de095b8cf8f3174 i-0ca8c41a1a28cc9a0 i-08a52735fbb4b3d4a i-0007b5a75706c7f0c i-01c524d86b985946d i-062bc8f0741606c96 i-03c0e87d991509fee i-02fa64b42e679f0b1 --query 'Reservations[].Instances[].LaunchTime' --output text | tr '\t' '\n' | sort | uniq -c
+          echo "===== sweeper summaries"
+          aws logs filter-log-events --log-group-name /aws/lambda/nimbus-runners-webhook-redelivery --start-time $(( ($(date +%s) - 1800) * 1000 )) --filter-pattern '"summary"' --query 'events[].message' --output text | tr '\t' '\n' | grep summary | cut -c1-200 | tail -30
+          echo "===== running now"
+          aws ec2 describe-instances --filters Name=tag:ghr:environment,Values=nimbus-runners Name=instance-state-name,Values=pending,running --query 'length(Reservations[].Instances[])'
