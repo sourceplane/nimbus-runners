@@ -31,7 +31,7 @@ spec:
       exitCriteria:
         - "orun-cloud's run matrix executes on the fleet for 7 days with no fleet-caused failure"
         - "the measured monthly run-rate is recorded against the cost model"
-      tasks: []
+      tasks: [NR-5]
     - name: "NR5 — the baseline"
       exitCriteria:
         - "baseline-v1 is tagged, registered with orun baseline register, and orun baseline new nimbus-runners builds a fresh fleet in a test account"

@@ -1,0 +1,14 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: NR-5
+  title: "orun-cloud on the fleet: trial, then switch"
+spec:
+  goal: "orun-cloud's run matrix is proven on the fleet against GitHub-hosted runners with the same selection, and then switched over once the account quotas allow its full fan-out."
+  affects:
+    - "work/**"
+  doneWhen:
+    - "a same-selection trial passes on both fleets and its lane-by-lane comparison is recorded"
+    - "the Lambda concurrency and spot vCPU quota increases are approved"
+    - "orun-cloud's run matrix runs on [self-hosted, linux, x64, nimbus] without max-parallel for 7 days"
+  gates: []
