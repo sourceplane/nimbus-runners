@@ -15,10 +15,10 @@ jobs:
       - run: |
           set -u
           since=$(( ($(date +%s) - 3600) * 1000 ))
-          for fn in webhook scale-up; do
+          for fn in scale-up; do
             echo "===== /aws/lambda/nimbus-runners-$fn"
             aws logs filter-log-events --log-group-name "/aws/lambda/nimbus-runners-$fn" --start-time $since \
-              --query 'events[].message' --output text 2>&1 | tr '\t' '\n' | grep -vE '^\s*$' | cut -c1-400 | tail -60
+              --query 'events[].message' --output text 2>&1 | tr '\t' '\n' | grep -vE '^\s*$' | cut -c1-300 | grep -iE 'error|warn|fail' | tail -15
           done
           echo "===== queues"
           for q in $(aws sqs list-queues --queue-name-prefix nimbus-runners --query 'QueueUrls[]' --output text); do
@@ -28,3 +28,7 @@ jobs:
           aws ec2 describe-instances --filters Name=tag:ghr:environment,Values=nimbus-runners --query 'Reservations[].Instances[].[InstanceId,State.Name,InstanceType,LaunchTime,InstanceLifecycle]' --output text
           echo "===== ami param"
           aws ssm get-parameter --name /nimbus-runners/ami-id --query 'Parameter.[Value,DataType]' --output text
+          echo "===== console of newest instance"
+          iid=$(aws ec2 describe-instances --filters Name=tag:ghr:environment,Values=nimbus-runners --query 'sort_by(Reservations[].Instances[],&LaunchTime)[-1].InstanceId' --output text)
+          echo "instance $iid"
+          aws ec2 get-console-output --instance-id "$iid" --latest --output text --query Output 2>&1 | grep -aiE 'user-data|runner|error|fail|jit|ssm|Starting|terminat' | tail -80
