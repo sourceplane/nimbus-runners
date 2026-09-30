@@ -28,7 +28,8 @@ jobs:
           aws ec2 describe-instances --filters Name=tag:ghr:environment,Values=nimbus-runners --query 'Reservations[].Instances[].[InstanceId,State.Name,InstanceType,LaunchTime,InstanceLifecycle]' --output text
           echo "===== ami param"
           aws ssm get-parameter --name /nimbus-runners/ami-id --query 'Parameter.[Value,DataType]' --output text
-          echo "===== console of newest instance"
-          iid=$(aws ec2 describe-instances --filters Name=tag:ghr:environment,Values=nimbus-runners --query 'sort_by(Reservations[].Instances[],&LaunchTime)[-1].InstanceId' --output text)
-          echo "instance $iid"
-          aws ec2 get-console-output --instance-id "$iid" --latest --output text --query Output 2>&1 | grep -aiE 'user-data|runner|error|fail|jit|ssm|Starting|terminat' | tail -80
+          echo "===== start-runner output per instance"
+          for iid in $(aws ec2 describe-instances --filters Name=tag:ghr:environment,Values=nimbus-runners --query 'sort_by(Reservations[].Instances[],&LaunchTime)[-2:].InstanceId' --output text); do
+            echo "--- $iid"
+            aws ec2 get-console-output --instance-id "$iid" --output text --query Output 2>&1 | grep -a 'user-data' | cut -c1-240 | tail -45
+          done
