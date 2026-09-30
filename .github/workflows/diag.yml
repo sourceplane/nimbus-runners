@@ -1,0 +1,18 @@
+name: diag
+on: pull_request
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  diag:
+    if: startsWith(github.head_ref, 'diag/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::306024784101:role/github-sourceplane-nimbus-runners
+          aws-region: us-east-1
+      - run: |
+          echo "===== lambda"; aws lambda get-account-settings --query 'AccountLimit.[ConcurrentExecutions,UnreservedConcurrentExecutions]' --output text
+          echo "===== spot vCPU L-34B43A08"; aws service-quotas get-service-quota --service-code ec2 --quota-code L-34B43A08 --query 'Quota.Value' --output text
+          echo "===== on-demand vCPU L-1216C47A"; aws service-quotas get-service-quota --service-code ec2 --quota-code L-1216C47A --query 'Quota.Value' --output text
