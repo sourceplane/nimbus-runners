@@ -137,9 +137,12 @@ build {
     inline = [
       "sudo mv /tmp/start-runner.sh /var/lib/cloud/scripts/per-boot/start-runner.sh",
       "sudo chmod +x /var/lib/cloud/scripts/per-boot/start-runner.sh",
-      # Leave no instance identity behind: cloud-init must treat the first boot
-      # of every runner as new so the per-boot start script runs.
-      "sudo cloud-init clean --logs --machine-id",
+      # Leave no instance identity behind, but keep /var/lib/cloud/scripts:
+      # `cloud-init clean` wipes all of /var/lib/cloud, per-boot start script
+      # included, and a runner then boots, never registers and is reaped.
+      "sudo rm -rf /var/lib/cloud/instance /var/lib/cloud/instances/* /var/lib/cloud/data/* /var/log/cloud-init*.log",
+      "sudo truncate -s 0 /etc/machine-id",
+      "test -x /var/lib/cloud/scripts/per-boot/start-runner.sh",
       "sudo rm -rf /tmp/* /var/lib/apt/lists/*",
     ]
   }
