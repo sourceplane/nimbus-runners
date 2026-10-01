@@ -9,7 +9,7 @@ As-built ≠ intent. This file records what actually shipped, and every place th
 | NR2 — the fleet | ✅ applied to prod; App `sourceplane-nimbus-runners` installed | NR-3: [#4](https://github.com/sourceplane/nimbus-runners/pull/4), [#5](https://github.com/sourceplane/nimbus-runners/pull/5), [#6](https://github.com/sourceplane/nimbus-runners/pull/6) |
 | NR3 — the image | image live; burst test waits on the Lambda quota | NR-4: [#7](https://github.com/sourceplane/nimbus-runners/pull/7), [#8](https://github.com/sourceplane/nimbus-runners/pull/8), [#10](https://github.com/sourceplane/nimbus-runners/pull/10), [#13](https://github.com/sourceplane/nimbus-runners/pull/13), [#14](https://github.com/sourceplane/nimbus-runners/pull/14), [#15](https://github.com/sourceplane/nimbus-runners/pull/15), [#16](https://github.com/sourceplane/nimbus-runners/pull/16) |
 | NR4 — orun-cloud on the fleet | **cut over 2026-09-30**; 7-day watch running | NR-5: [orun-cloud#1732](https://github.com/sourceplane/orun-cloud/pull/1732) (merged), trial [#1730](https://github.com/sourceplane/orun-cloud/pull/1730) (closed) |
-| NR5 — the baseline | | |
+| NR5 — the baseline | the README positions the repository as the standalone self-hosted option (2026-10-01); `baseline-v1` tag and registration still open | NR-6 |
 
 ## Measurements
 

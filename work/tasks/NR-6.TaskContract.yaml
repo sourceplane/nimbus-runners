@@ -1,0 +1,14 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: NR-6
+  title: "The README says what this is: your own runners, in your own account"
+spec:
+  goal: "A reader landing on the repository learns that nimbus-runners is the standalone self-hosted option, what it costs and delivers as measured, how to use it, and how it differs from Orunbase managed runners."
+  affects:
+    - "README.md"
+    - "work/**"
+  doneWhen:
+    - "the README states that no Orunbase service is in the job path and names the three steps to use the fleet"
+    - "every number in the README is one the status file records as measured"
+  gates: []

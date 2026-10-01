@@ -35,4 +35,4 @@ spec:
     - name: "NR5 — the baseline"
       exitCriteria:
         - "baseline-v1 is tagged, registered with orun baseline register, and orun baseline new nimbus-runners builds a fresh fleet in a test account"
-      tasks: []
+      tasks: [NR-6]
