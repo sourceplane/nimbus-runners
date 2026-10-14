@@ -91,7 +91,18 @@ The quota fixed the lost lanes. It did not fix the waves:
 - **Probably not the webhook.** At 1,500 the webhook lambda has headroom for the whole burst, and the second wave came on `job_retry`'s 120 s beat, not on the sweeper's one-minute beat. The likelier loss is between SQS and a registered runner: scale-up, CreateFleet, or the JIT config. The GitHub App's delivery log would settle it.
 - **It costs wall-clock.** The longest lane (`web-console-perf-budgets`, 15 min of work) waited 6m46s for a runner, so the run took 21.6 min instead of about 16.5.
 
-Next: read the `nimbus-runners-scale-up` logs for 2026-10-14 06:49:30–06:51:00 UTC. Look for `Some runners failed to be created`, `maximum number of runners reached`, `ThrottlingException` (SSM `PutParameter` for the JIT configs), `RequestLimitExceeded` (CreateFleet), `MaxSpotInstanceCountExceeded`, and GitHub secondary rate limits on `generate-jitconfig`. Until the cause is known, a shorter `job_retry` (`delay_in_seconds` 30–60, `max_attempts` 2–3) brings the second wave forward. The job-queued check already stops it from launching for jobs that have started.
+**The cause ([#27](https://github.com/sourceplane/nimbus-runners/issues/27)): the scale-up lambda timed out part-way through its batches.**
+- **What one invocation does.** It works through its SQS batch one message at a time: the job-queued check per message, the runner count, one CreateFleet, then per runner a GitHub `generate-jitconfig` POST, an SSM `PutParameter` and a 25 ms pause (module v7.11.0, `scale-up.ts` and `github-runner.ts`).
+- **Why it ran out of time.** The fleet raised the batch from the module's 10 to 20 and kept the module's 30 s timeout, so a full batch could outrun its lambda.
+- **What a timed-out batch leaves behind.**
+  - Its instances are already launched but only partly configured. They never register, yet they count against `runners_maximum_count` until scale-down reaps them after `runner_boot_time_in_minutes` (4).
+  - Its messages return to the queue after the 30 s visibility timeout. The retries find the cap full of unconfigured instances.
+- **Why it looked like waves.** A JIT failure inside a batch that completes is handled cleanly: the module terminates the unconfigured instance and retries the message. Only a timeout skips that.
+
+**The fix (#26):**
+- `lambda_event_source_mapping_batch_size` goes back to 10.
+- `runners_scale_up_lambda_timeout` goes to 120 s; the build queue's visibility timeout follows it.
+- `job_retry` stays at 120 s. A re-check shorter than a runner's boot (~70 s) would find the job still queued and launch it a second runner.
 
 Packing jobs onto fewer runners with orun lanes (orun v2.76+) works around the waves, because a smaller fan-out fits inside the first pass. 56 lanes of one to three jobs, two at a time, finished the same full verify in 16.9 min on 207.6 runner-minutes. orun-cloud is not adopting lanes yet; the reasons are in #1869.
 
