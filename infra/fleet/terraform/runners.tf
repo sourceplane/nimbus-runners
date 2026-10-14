@@ -67,6 +67,9 @@ module "runners" {
   # short delay plus the queued check means a cancelled lane never boots.
   delay_webhook_event     = 10
   enable_job_queued_check = true
+  # A safety net, not the burst path. Not shorter than a runner's boot (about
+  # 70 s from launch to job start): a job is still queued while its runner
+  # boots, and an earlier re-check would launch it a second runner.
   job_retry = {
     enable           = true
     delay_in_seconds = 120
@@ -75,12 +78,22 @@ module "runners" {
 
   # Burst: ~120 lanes land within seconds on a full verify.
   runners_maximum_count = local.runners_maximum_count
-  # No reservation: a fresh account's Lambda concurrency limit is 10, and AWS
-  # refuses a reservation that leaves fewer than 10 unreserved. Batches of 20
-  # keep a 100-job burst to a handful of concurrent scale-up invocations.
-  scale_up_reserved_concurrent_executions                        = -1
-  lambda_event_source_mapping_batch_size                         = 20
+  # No reservation: the account's Lambda concurrency is 1,500 (2026-10-14), and
+  # scale-up shares it with nothing that bursts at the same time.
+  scale_up_reserved_concurrent_executions = -1
+  # ONE SCALE-UP PASS FOR A WHOLE BURST (#27). An invocation works through its
+  # batch one message at a time: the queued check per job, CreateFleet, then a
+  # JIT config (a GitHub POST and an SSM write) per runner. At 20 messages and
+  # the module's 30 s timeout, batches timed out part-way: their instances were
+  # already launched but never configured, so they never registered, yet counted
+  # against runners_maximum_count until scale-down reaped them after
+  # runner_boot_time. A 128-lane burst got 41–61 runners at once and the rest
+  # over 17 minutes. The module's own batch of 10 halves the work per call,
+  # and 120 s (the queue's visibility timeout follows it) leaves room for a
+  # slow GitHub or SSM answer.
+  lambda_event_source_mapping_batch_size                         = 10
   lambda_event_source_mapping_maximum_batching_window_in_seconds = 1
+  runners_scale_up_lambda_timeout                                = 120
   minimum_running_time_in_minutes                                = 3
   runner_boot_time_in_minutes                                    = 4
 
