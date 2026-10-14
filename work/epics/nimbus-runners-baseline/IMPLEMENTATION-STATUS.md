@@ -16,9 +16,9 @@ As-built ≠ intent. This file records what actually shipped, and every place th
 | Measure | Target | Measured |
 |---|---|---|
 | p50 launch-to-job-start | < 60 s | ≈ 55–60 s. Queue-to-start is 87 s p50 over 15 lanes (2026-09-30), which includes the 10 s webhook delay, the queued check and CreateFleet |
-| 100-job burst, worst wait for a runner | < 3 min | 50-job burst: 50/50 passed. orun-cloud cold 51-lane run: 51/51 passed, 47 started within 90 s of `plan` (p50 74 s), worst 245 s |
+| 100-job burst, worst wait for a runner | < 3 min | 50-job burst: 50/50 passed. orun-cloud cold 51-lane run: 51/51 passed, 47 started within 90 s of `plan` (p50 74 s), worst 245 s. **Not met at 128 lanes (2026-10-14):** every lane got a runner, but only 61 within 3 min, and the worst waited 17 min (below) |
 | Spot vCPU quota `L-34B43A08` | ≥ 200 | 200 ✅ |
-| Lambda concurrency `L-B99A9384` | 1,000 | 10; increase to 1,500 pending. The redelivery sweeper (#19, #21, #23) covers bursts until then |
+| Lambda concurrency `L-B99A9384` | 1,000 | 1,500 ✅ (2026-10-14). No lane is lost to a throttled webhook any more; the burst still arrives in waves (below) |
 | orun-cloud monthly run-rate on the fleet | ≤ $55 at the 30-day volume | |
 
 ## Departures from the design
@@ -69,3 +69,29 @@ The trial ran with `max-parallel: 5`. At 8, 3 of 17 webhook deliveries were thro
   - The first run was flattered by about 48 idle runners that the sweeper had launched by redelivering the same deliveries three minutes running. #23 now checks the job is still queued and backs off per job.
   - The cold run: 51/51 passed, `plan` to first step at p50 74 s and p90 88 s, worst 245 s. Lane run time p50 94 s, 87.9 runner-minutes, workflow 6.1 min, about $0.12 against $0.67 at hosted rates.
 - **Cutover.** The markers were removed and #1732 merged with a `ci.yml`-only diff: `run` lanes on `[self-hosted, linux, x64, nimbus]` with no `max-parallel`. `plan`, `deps-cache`, `work-sync` and `run-local` stay hosted. To break glass, set `runs-on` back to `ubuntu-latest`.
+
+### The burst after the Lambda quota (2026-10-14)
+
+[sourceplane/orun-cloud#1869](https://github.com/sourceplane/orun-cloud/pull/1869) ran orun-cloud's widest pull-request fan-out, a full verify of 128 lanes, once the account's Lambda concurrency was 1,500. It is compared with the last full verify at the old quota of 10, on 2026-10-05 ([#1826](https://github.com/sourceplane/orun-cloud/pull/1826), [run 37269666394](https://github.com/sourceplane/orun-cloud/actions/runs/37269666394)).
+
+| 128 lanes, from `plan` finishing | 2026-10-05, quota 10 | 2026-10-14, quota 1,500 ([run 38523921655](https://github.com/sourceplane/orun-cloud/actions/runs/38523921655)) |
+|---|---|---|
+| Lanes that got a runner | 105; 23 sat queued for 69 min until the run was cancelled | 128 |
+| Started within 90 s / 3 min / 5 min | 47 / 48 / 48 | 61 / 61 / 99 |
+| Queue to start, p50 / p90 / worst | 5.3 / 16.6 / 18.0 min | 4.2 / 7.4 / 17.2 min |
+| Most lanes running at once | 48 | 61 (68 across the fleet, other pull requests included) |
+| Lane run time, p50 / p90 | 92 / 209 s | 92 / 217 s |
+| `plan` to the last lane finishing | — (lanes lost) | 21.6 min |
+| Runner-minutes (GitHub job time) | — | 266.6 |
+
+The quota fixed the lost lanes. It did not fix the waves:
+
+- **The first scale-up pass launches 40 to 60 runners, not 128.** 61 lanes started 71–83 s after they were queued. Nothing else started until 06:53, about four minutes in, when 38 arrived together (the `job_retry` re-check, 120 s delay, plus boot). The last 29 trickled in over the next 13 minutes. A second burst later that morning, 56 lanes, had 50 running within 3 min, and its last lane waited 6.6 min. The 2026-10-05 run shows the same shape: 47, then a trickle.
+- **Neither cap was reached.** At most 68 runners were busy across the fleet (`runners_maximum_count` is 100, the spot quota is 200 vCPU, 100 instances). At 06:53, 11 of the run's lanes were running and 67 were queued; from 06:59 to 07:02, 3 to 5 were running and 10 were still queued.
+- **Probably not the webhook.** At 1,500 the webhook lambda has headroom for the whole burst, and the second wave came on `job_retry`'s 120 s beat, not on the sweeper's one-minute beat. The likelier loss is between SQS and a registered runner: scale-up, CreateFleet, or the JIT config. The GitHub App's delivery log would settle it.
+- **It costs wall-clock.** The longest lane (`web-console-perf-budgets`, 15 min of work) waited 6m46s for a runner, so the run took 21.6 min instead of about 16.5.
+
+Next: read the `nimbus-runners-scale-up` logs for 2026-10-14 06:49:30–06:51:00 UTC. Look for `Some runners failed to be created`, `maximum number of runners reached`, `ThrottlingException` (SSM `PutParameter` for the JIT configs), `RequestLimitExceeded` (CreateFleet), `MaxSpotInstanceCountExceeded`, and GitHub secondary rate limits on `generate-jitconfig`. Until the cause is known, a shorter `job_retry` (`delay_in_seconds` 30–60, `max_attempts` 2–3) brings the second wave forward. The job-queued check already stops it from launching for jobs that have started.
+
+Packing jobs onto fewer runners with orun lanes (orun v2.76+) works around the waves, because a smaller fan-out fits inside the first pass. 56 lanes of one to three jobs, two at a time, finished the same full verify in 16.9 min on 207.6 runner-minutes. orun-cloud is not adopting lanes yet; the reasons are in #1869.
+
