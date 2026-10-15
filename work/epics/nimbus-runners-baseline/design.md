@@ -10,7 +10,7 @@ A GitHub App owned by the adopter sends `workflow_job` events to an API Gateway 
 |---|---|---|
 | Runner lifecycle | Ephemeral, JIT-registered, one job per instance (`enable_ephemeral_runners`, `enable_jit_config`) | Jobs carry deploy credentials, so nothing survives between jobs. Nothing is paid between bursts. |
 | Capacity | Spot, `price-capacity-optimized`, seven 2 vCPU / 8 GiB x86 types across five AZs. On-demand only on `InsufficientInstanceCapacity` | Deep pools for a 100-instance burst at about 40% of the on-demand price. |
-| Instance families | `m7i-flex`, `m6a`, `m5a`, `m6i`, `m5`, `m7i`, `m7a` `.large`; no T-family | Matches the private-repo `ubuntu-latest` shape. T3 runs out of CPU credits or bills unlimited-mode surcharges under CI load. |
+| Instance families | `m7a`, `m8a` `.large` (until 2026-10-15: `m7i-flex`, `m6a`, `m5a`, `m6i`, `m5`, `m7i`, `m7a`); no T-family | Matches the private-repo `ubuntu-latest` shape with two physical cores: the same orun-cloud job ran 1.08–1.61× longer on the other types (sourceplane/orun-cloud#1908). T3 runs out of CPU credits or bills unlimited-mode surcharges under CI load. |
 | Cap | `runners_maximum_count = 100` (input `maxRunners`); scale-up concurrency 5; batch 20 | Absorbs a full orun-cloud verify. Lanes above the cap queue; they are not dropped. |
 | Cancelled jobs | `delay_webhook_event = 10`, `enable_job_queued_check = true` | Superseded PR runs are cancelled by the consumer's concurrency group and never boot. |
 | Labels | `[self-hosted, linux, x64, nimbus]` (input `runnerLabels`) | One label selects the fleet. Stage 2 adds per-job `ghr-*` labels without changing this set. |

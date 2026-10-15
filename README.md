@@ -16,7 +16,7 @@ GitHub ── workflow_job ──► API Gateway ──► webhook λ ──► 
 |---|---|
 | **Isolation** | One ephemeral instance per job, registered with a single-use JIT config. No runner is reused. |
 | **Cost** | About $0.0008 per runner-minute (2 vCPU / 8 GiB spot, EBS and IPv4 included) against $0.006 on GitHub-hosted. Idle cost is about $4 a month. A monthly AWS budget alarm is part of the fleet. |
-| **Burst** | 100 runners by default, across seven instance types and five availability zones, spot with on-demand fallback when a pool is empty. |
+| **Burst** | 100 runners by default, on AMD `m7a`/`m8a` (two physical cores each) across five availability zones, spot with on-demand fallback when a pool is empty. |
 | **Start time** | A prebuilt image (`image/`) with the runner, Docker and Node baked in. No user data, no downloads at boot. |
 | **Missed webhooks** | GitHub never retries a failed delivery. A sweeper re-requests failed `workflow_job` deliveries for jobs that are still queued. |
 | **Blast radius** | Every role carries a permissions boundary; the deploy role can only touch resources under the fleet's prefix. The GitHub App key lives in SSM and never passes through Terraform state or CI. |

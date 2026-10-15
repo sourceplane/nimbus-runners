@@ -30,18 +30,20 @@ locals {
   # budgeted burst. Lanes above the cap wait in the queue, they are not dropped.
   runners_maximum_count = 100
 
-  # 2 vCPU / 8 GiB x86_64, the GitHub-hosted ubuntu-latest (private repo) shape.
-  # Many types across 5 AZs gives price-capacity-optimized deep spot pools for
-  # a 100-instance burst. No T-family: CI exhausts burst credits and unlimited
+  # 2 vCPU / 8 GiB x86_64, the GitHub-hosted ubuntu-latest (private repo) shape,
+  # as two PHYSICAL cores. AMD's 7th and 8th generations run one thread per
+  # core; every Intel type and m5a/m6a give "2 vCPU" as one core and its
+  # hyperthread. On 958 runs of 116 orun-cloud jobs (2026-10-08 to 10-14) the
+  # same job took, against m7a: 1.08x on m7i/m7i-flex, 1.16x on m6a, 1.21x on
+  # m6i, 1.27x on m5 and 1.61x on m5a, and price-capacity-optimized put a third
+  # of all jobs on m5/m5a. Spot cost per job is the same or lower on m7a
+  # (sourceplane/orun-cloud#1908). Two types across 5 AZs; a pool with no spot
+  # capacity fails over to on-demand. Add m7i-flex.large back only if spot
+  # capacity runs short. No T-family: CI exhausts burst credits and unlimited
   # mode bills a surcharge.
   instance_types = [
-    "m7i-flex.large",
-    "m6a.large",
-    "m5a.large",
-    "m6i.large",
-    "m5.large",
-    "m7i.large",
     "m7a.large",
+    "m8a.large",
   ]
 
   root_volume_gb = 40
