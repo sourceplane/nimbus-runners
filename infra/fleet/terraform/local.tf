@@ -27,7 +27,9 @@ locals {
   runner_labels = ["nimbus"]
 
   # orun-cloud peaks at ~120 concurrent lanes on a full verify; 100 is the
-  # budgeted burst. Lanes above the cap wait in the queue, they are not dropped.
+  # budgeted burst. Lanes above the cap wait in the queue, they are not dropped,
+  # but they wait: on a 129-job verify ~30 jobs waited 2-4.5 minutes for a slot
+  # and a re-check (#30). orun-cloud packs a full verify into fewer lanes.
   runners_maximum_count = 100
 
   # 2 vCPU / 8 GiB x86_64, the GitHub-hosted ubuntu-latest (private repo) shape.
@@ -36,21 +38,18 @@ locals {
   # orun-cloud jobs (2026-10-08 to 10-14) the same job took, against m7a: 1.08x
   # on m7i/m7i-flex, 1.16x on m6a, 1.21x on m6i, 1.27x on m5 and 1.61x on m5a,
   # and price-capacity-optimized put a third of all jobs on m5/m5a
-  # (sourceplane/orun-cloud#1908). So the slow three stay out.
+  # (sourceplane/orun-cloud#1908).
   #
-  # The fastest types alone are too shallow a pool. On m7a/m8a only, a
-  # 128-job verify got m7a in two AZs (118 in us-east-1b, no m8a at all), and
-  # 32 jobs waited over 2 minutes for a runner, against 5 on the wider pool
-  # (sourceplane/nimbus-runners#30). The Intel 7th generation and m6a give
-  # price-capacity-optimized room at most 1.16x the time.
+  # Only m7a and m8a: given m7i-flex, m7i and m6a as well (#31), a 129-job
+  # verify put none of its jobs on m7a or m8a, and they waited for a runner as
+  # long as on m7a alone. The waits are runners_maximum_count, not spot
+  # depth: 129 jobs, 100 runners (#30). A pool with no spot capacity fails
+  # over to on-demand.
   #
   # No T-family: CI exhausts burst credits and unlimited mode bills a surcharge.
   instance_types = [
     "m7a.large",
     "m8a.large",
-    "m7i-flex.large",
-    "m7i.large",
-    "m6a.large",
   ]
 
   root_volume_gb = 40
