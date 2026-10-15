@@ -30,20 +30,27 @@ locals {
   # budgeted burst. Lanes above the cap wait in the queue, they are not dropped.
   runners_maximum_count = 100
 
-  # 2 vCPU / 8 GiB x86_64, the GitHub-hosted ubuntu-latest (private repo) shape,
-  # as two PHYSICAL cores. AMD's 7th and 8th generations run one thread per
-  # core; every Intel type and m5a/m6a give "2 vCPU" as one core and its
-  # hyperthread. On 958 runs of 116 orun-cloud jobs (2026-10-08 to 10-14) the
-  # same job took, against m7a: 1.08x on m7i/m7i-flex, 1.16x on m6a, 1.21x on
-  # m6i, 1.27x on m5 and 1.61x on m5a, and price-capacity-optimized put a third
-  # of all jobs on m5/m5a. Spot cost per job is the same or lower on m7a
-  # (sourceplane/orun-cloud#1908). Two types across 5 AZs; a pool with no spot
-  # capacity fails over to on-demand. Add m7i-flex.large back only if spot
-  # capacity runs short. No T-family: CI exhausts burst credits and unlimited
-  # mode bills a surcharge.
+  # 2 vCPU / 8 GiB x86_64, the GitHub-hosted ubuntu-latest (private repo) shape.
+  # AMD's 7th and 8th generations give two PHYSICAL cores; every Intel type and
+  # m5a/m6a give "2 vCPU" as one core and its hyperthread. On 958 runs of 116
+  # orun-cloud jobs (2026-10-08 to 10-14) the same job took, against m7a: 1.08x
+  # on m7i/m7i-flex, 1.16x on m6a, 1.21x on m6i, 1.27x on m5 and 1.61x on m5a,
+  # and price-capacity-optimized put a third of all jobs on m5/m5a
+  # (sourceplane/orun-cloud#1908). So the slow three stay out.
+  #
+  # The fastest types alone are too shallow a pool. On m7a/m8a only, a
+  # 128-job verify got m7a in two AZs (118 in us-east-1b, no m8a at all), and
+  # 32 jobs waited over 2 minutes for a runner, against 5 on the wider pool
+  # (sourceplane/nimbus-runners#30). The Intel 7th generation and m6a give
+  # price-capacity-optimized room at most 1.16x the time.
+  #
+  # No T-family: CI exhausts burst credits and unlimited mode bills a surcharge.
   instance_types = [
     "m7a.large",
     "m8a.large",
+    "m7i-flex.large",
+    "m7i.large",
+    "m6a.large",
   ]
 
   root_volume_gb = 40

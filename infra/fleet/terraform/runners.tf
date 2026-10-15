@@ -69,11 +69,15 @@ module "runners" {
   enable_job_queued_check = true
   # A safety net, not the burst path. Not shorter than a runner's boot (about
   # 70 s from launch to job start): a job is still queued while its runner
-  # boots, and an earlier re-check would launch it a second runner.
+  # boots, and an earlier re-check would launch it a second runner. Three
+  # re-checks, backing off 2x (about +120 s, +240 s, +480 s): one left a job
+  # with no runner for 15 minutes when its single re-check also launched
+  # nothing (#30). Each re-check first asks GitHub whether the job is still
+  # queued, so a job that found a runner costs one API call.
   job_retry = {
     enable           = true
     delay_in_seconds = 120
-    max_attempts     = 1
+    max_attempts     = 3
   }
 
   # Burst: ~120 lanes land within seconds on a full verify.
